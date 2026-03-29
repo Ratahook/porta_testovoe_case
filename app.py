@@ -4,10 +4,10 @@ from fastapi import FastAPI
 from elasticsearch import Elasticsearch
 from handlers import searcher, delete_by_id
 from bd import Text, bd_activate
-from elastic import elastic_run
+from elastic import elastic_run, search
+
 
 app = FastAPI()
-search = Elasticsearch("http://elastic:9200")
 
 # docker network create porta
 # docker build -t porta_app .
