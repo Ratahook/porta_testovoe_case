@@ -58,7 +58,6 @@ async def searcher(pool, search, call_text: str) -> List[Item]:
 
     return results
 
-# МЕТОД НЕ РАБОТАЕТ
 async def searcher_rubrics(pool, search, call_rub: str) -> List[Item]:
     response = search.search(
         index="textsearch",

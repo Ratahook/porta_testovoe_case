@@ -7,11 +7,8 @@ from elastic import elastic_run, search
 import asyncpg
 from config import settings
 
-# Поиск по рубрикам
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # startup
     app.state.db_pool = await asyncpg.create_pool(
         database=settings.db_name,
         user=settings.db_user,
@@ -22,7 +19,6 @@ async def lifespan(app: FastAPI):
     await bd_activate(app.state.db_pool)
     await elastic_run(app.state.db_pool)
     yield
-    # shutdown
     await app.state.db_pool.close()
 
 app = FastAPI(lifespan=lifespan)
@@ -32,7 +28,6 @@ app = FastAPI(lifespan=lifespan)
 # docker run --name elastic --network porta -p 9200:9200 -e "discovery.type=single-node" -e "xpack.security.enabled=false" docker.elastic.co/elasticsearch/elasticsearch:8.10.0
 # docker build -t porta_app .
 # docker run -p 8000:8000 --network porta porta_app
-# ["VK-1603736028819866", "VK-56826133514", "VK-60102223342"]
 
 
 @app.get("/id/{id}", response_model=Item)
@@ -45,7 +40,6 @@ async def app_search(text: str):
     result = await searcher(app.state.db_pool, search, text)
     return result
 
-# МЕТОД НЕ РАБОТАЕТ
 @app.get("/rubric", response_model=list[Item])
 async def app_search_rubric(rubric: str):
     result = await searcher_rubrics(app.state.db_pool, search, rubric)
