@@ -5,16 +5,39 @@
     "version": "0.1.0"
   },
   "paths": {
-    "/boot": {
+    "/id/{id}": {
       "get": {
-        "summary": "App Boot",
-        "operationId": "app_boot_boot_get",
+        "summary": "App Id Get",
+        "operationId": "app_id_get_id__id__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Item"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
@@ -41,7 +64,13 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Item"
+                  },
+                  "title": "Response App Search Search Get"
+                }
               }
             }
           },
@@ -58,14 +87,57 @@
         }
       }
     },
-    "/del": {
+    "/rubric": {
       "get": {
+        "summary": "App Search Rubric",
+        "operationId": "app_search_rubric_rubric_get",
+        "parameters": [
+          {
+            "name": "rubric",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rubric"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Item"
+                  },
+                  "title": "Response App Search Rubric Rubric Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/del/{id}": {
+      "delete": {
         "summary": "App Delete",
-        "operationId": "app_delete_del_get",
+        "operationId": "app_delete_del__id__delete",
         "parameters": [
           {
             "name": "id",
-            "in": "query",
+            "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
@@ -110,6 +182,35 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "Item": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "rubrics": {
+            "items": {},
+            "type": "array",
+            "title": "Rubrics"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "created_date": {
+            "type": "string",
+            "title": "Created Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "rubrics",
+          "text",
+          "created_date"
+        ],
+        "title": "Item"
       },
       "ValidationError": {
         "properties": {

@@ -1,14 +1,33 @@
+import json
 from elasticsearch import NotFoundError
-from bd import Text
 from pydantic import BaseModel
+from typing import List
 
 class Item(BaseModel):
     id: int
-    rubrics: str
+    rubrics: list
     text: str
     created_date: str
 
-def searcher(search, call_text):
+async def get_by_id(pool, search, doc_id: int) -> Item:
+    response = search.get(
+        index="textsearch",
+        id=doc_id
+    )
+
+    id = int(response["_id"])
+
+    async with pool.acquire() as conn:
+        data = await conn.fetchrow(
+            "SELECT * FROM text WHERE id = $1",
+            id
+        )
+
+    results = Item(id=data["id"], rubrics=json.loads(data["rubrics"]), text=data["text"], created_date=data["created_date"])
+
+    return results
+
+async def searcher(pool, search, call_text: str) -> List[Item]:
     response = search.search(
         index="textsearch",
         query={
@@ -25,20 +44,80 @@ def searcher(search, call_text):
             "id": hit["_id"],
         })
 
-    for i, elem in enumerate(results):
-        id = elem['id']
-        bd_odj = Text.get(Text.id == id)
-        results[i] = Item(id=bd_odj.id, rubrics=bd_odj.rubrics, text=bd_odj.text, created_date=bd_odj.created_date)
+
+    async with pool.acquire() as conn:
+        for i, elem in enumerate(results):
+            id = int(elem['id'])
+            row = await conn.fetchrow(
+                "SELECT * FROM text WHERE id = $1",
+                id
+            )
+            results[i] = Item(id=row["id"], rubrics=json.loads(row["rubrics"]), text=row["text"], created_date=row["created_date"])
 
     results.sort(key=lambda x: x.created_date)
 
-    final  = [item.model_dump() for item in results]
-    return final
+    return results
 
-def delete_by_id(es, model, doc_id):
-    deleted = model.delete().where(model.id == doc_id).execute()
+# МЕТОД НЕ РАБОТАЕТ
+async def searcher_rubrics(pool, search, call_rub: str) -> List[Item]:
+    response = search.search(
+        index="textsearch",
+        query={
+            "term": {
+                "rubrics": call_rub
+            }
+        },
+        size=20
+    )
+    results = []
+    for hit in response["hits"]["hits"]:
+        results.append({
+            "id": hit["_id"],
+        })
+
+    async with pool.acquire() as conn:
+        for i, elem in enumerate(results):
+            id = int(elem['id'])
+            row = await conn.fetchrow(
+                "SELECT * FROM text WHERE id = $1",
+                id
+            )
+            results[i] = Item(id=row["id"], rubrics=json.loads(row["rubrics"]), text=row["text"], created_date=row["created_date"])
+
+
+    results.sort(key=lambda x: x.created_date)
+
+    return results
+
+async def delete_by_id(pool, es, doc_id: int):
     try:
-        es.delete(index="textsearch", id=doc_id)
-    except NotFoundError:
-        pass
-    return deleted
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    "SELECT * FROM text WHERE id = $1",
+                    doc_id
+                )
+                if not row:
+                    return "DELETE 0"
+
+                deleted = await conn.execute(
+                    "DELETE FROM text WHERE id = $1",
+                    doc_id
+                )
+                if deleted == "DELETE 0":
+                    return deleted
+                try:
+                    es.delete(index="textsearch", id=doc_id)
+                except NotFoundError:
+                    pass
+                except Exception as e:
+                    await conn.execute(
+                        "INSERT INTO text (id, rubrics, text, created_date) VALUES ($1, $2, $3, $4)",
+                        row["id"], row["rubrics"], row["text"], row["created_date"]
+                    )
+                    raise
+        return deleted
+    except Exception as e:
+        return f"DB error: {e}"
+
+

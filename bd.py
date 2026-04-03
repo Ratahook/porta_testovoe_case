@@ -1,38 +1,36 @@
-from peewee import PostgresqlDatabase, Model, TextField, AutoField
 import csv
+import asyncio
+import json
 # docker run -d --name porta --network porta -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=admin -e POSTGRES_DB=porta -p 5432:5432 postgres:15
-bd = PostgresqlDatabase(
-    "porta",
-    user="admin",
-    password="admin",
-    host="porta",
-    port=5432
-)
-
-class Text(Model):
-    class Meta:
-        database = bd
-    id = AutoField(primary_key=True)
-    rubrics = TextField()
-    text = TextField()
-    created_date = TextField()
 
 
 
+async def bd_activate(pool):
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS text (
+                id SERIAL PRIMARY KEY,
+                rubrics JSONB,
+                text TEXT,
+                created_date TEXT
+            )
+        """)
+
+        with open("posts.csv", encoding="UTF-8") as file:
+            read = csv.reader(file)
+            for line in read:
+                rubrics_str = line[2].strip()
+                if rubrics_str.startswith("[") and rubrics_str.endswith("]"):
+                    rubrics_str = rubrics_str[1:-1]
+                rubrics_list = [x.strip().strip("'\"") for x in rubrics_str.split(",")]
+                rubrics_json = json.dumps(rubrics_list)
+                await conn.execute(
+                    "INSERT INTO text (rubrics, text, created_date) VALUES ($1, $2, $3)",
+                    rubrics_json, line[0], line[1]
+            )
 
 
-def bd_activate():
-    #Создаём базу
-    bd.connect()
-    bd.create_tables(Model.__subclasses__())
-    #Переносим данные из ксв
-    with open("posts.csv", encoding="UTF-8") as file:
-        read = csv.reader(file)
-        for line in read:
-            Text.create(rubrics=line[2], text=line[0], created_date=line[1])
 
-    test = Text.get(Text.id == 34)
-    print(test.created_date, test.text)
 
 
 

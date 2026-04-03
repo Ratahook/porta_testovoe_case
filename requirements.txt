@@ -4,3 +4,5 @@ elasticsearch==8.10.0
 peewee~=4.0.2
 psycopg2-binary
 pydantic~=2.12.5
+pydantic-settings
+asyncpg
